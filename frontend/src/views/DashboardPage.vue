@@ -11,17 +11,6 @@
       b-button.d-inline-flex.pt-2.pr-3.pl-2.pb-2(v-if="shop.total" variant="primary" @click="start(shop.name)")
         b-icon(icon="arrow-clockwise" animation="spin" font-scale="1")
         .ml-2 Перезапуск
-  div
-    b-icon.logout(icon="power" aria-hidden="true" font-scale="3rem" @click="logout")
-    b-jumbotron.parser-card(v-for="shop in data" :key="shop.name" :header="shop.name")
-      h3(v-if="shop.start" v-text="shop.start")
-      h4(v-if="shop.links" v-text="shop.links")
-      h5(v-if="shop.products" v-text="shop.products")
-      p(v-if="shop.total" v-text="shop.total")
-
-      b-button.d-inline-flex.pt-2.pr-3.pl-2.pb-2(v-if="shop.total" variant="primary")
-        b-icon(icon="arrow-clockwise" animation="spin" font-scale="1")
-        .ml-2 Перезапуск
 
 </template>
 
