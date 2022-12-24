@@ -38,7 +38,7 @@ export default {
         window.localStorage.setItem('accessToken', JSON.stringify(token))
         axios.defaults.headers['Authorization'] = 'Bearer ' + token
         await this.$router.push('/dashboard')
-      } catch (e) {
+      } catch {
         this.error = 'пошёл нахуй'
       }
     }
@@ -54,4 +54,5 @@ export default {
   width: 100vw
   height: 100vh
   padding: 0 45%
+
 </style>
