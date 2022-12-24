@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "vue-cli-plugin-pug": "^2.0.0"
+  }
+}
