@@ -6,10 +6,10 @@ Vue.use(VueRouter)
 const routes = [
   {
     path: '/login',
-    component: () => import(/* webpackChunkName: "auth" */ '../views/AuthPage.vue')
+    component: () => import(/* webpackChunkName: "auth" */ '@/views/AuthPage.vue')
   }, {
     path: '/dashboard',
-    component: () => import(/* webpackChunkName: "dashboard" */ '../views/DashboardPage.vue'),
+    component: () => import(/* webpackChunkName: "dashboard" */ '@/views/DashboardPage.vue'),
     meta: { requiresAuth: true }
   }, {
     path: '*',
@@ -23,13 +23,10 @@ const router = new VueRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth) {
-    const authUser = JSON.parse(window.localStorage.getItem('accessToken'))
-    authUser ? next() : next('/login')
-  } else {
-    next();
-  }
-});
+router.beforeEach((to, from, next) => to.meta.requiresAuth
+    ? JSON.parse(window.localStorage.getItem('accessToken'))
+      ? next() : next('/login')
+    : next()
+)
 
 export default router
