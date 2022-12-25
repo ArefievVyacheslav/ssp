@@ -1,6 +1,5 @@
 <template lang="pug">
   .auth-form.flex-column
-    h3 {{ error }}
     h6.mr-auto name
     b-input(v-model="name" autocomplete="off")
     h6.mt-2.mr-auto pass
@@ -10,14 +9,11 @@
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
   name: 'AuthPage',
   data: () => ({
     name: '',
-    pass: '',
-    error: ''
+    pass: ''
   }),
   computed: {
     isDisabledLogin () {
@@ -33,13 +29,14 @@ export default {
   methods: {
     async login () {
       try {
-        const { data } = await axios.post('http://localhost:3002/login', this.loginData)
+        const { data } = await this.$axios.post('/login', this.loginData)
         const token = data.accessToken
         window.localStorage.setItem('accessToken', JSON.stringify(token))
-        axios.defaults.headers['Authorization'] = 'Bearer ' + token
+        this.$axios.defaults.headers['Authorization'] = 'Bearer ' + token
         await this.$router.push('/dashboard')
-      } catch {
-        this.error = 'пошёл нахуй'
+      } catch (e) {
+        console.log(e)
+        this.$bvToast.toast('Пошёл нахуй', { autoHideDelay: 5000, variant: 'danger', noCloseButton: true })
       }
     }
   }
