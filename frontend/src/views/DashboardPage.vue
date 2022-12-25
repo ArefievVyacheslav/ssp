@@ -7,12 +7,12 @@
     b-tooltip(target="start" triggers="hover") start parsing
 
     b-icon#proxy(icon="list" aria-hidden="true" font-scale="4rem" v-b-modal.modal-proxy)
-    b-tooltip(target="proxy" triggers="hover") change proxy, активны до 29-ого
+    b-tooltip(target="proxy" triggers="hover") proxy, активны до 29-ого
 
     b-jumbotron.parser-card(v-for="shop in data" :key="shop.name" :header="shop.name.charAt(0).toUpperCase() + shop.name.slice(1)")
-      h3(v-if="shop.start" v-text="shop.start")
-      h4(v-if="shop.links" v-text="shop.links")
-      h5(v-if="shop.products" v-text="shop.products")
+      h3(v-if="shop.first" v-text="shop.first")
+      h4(v-if="shop.second" v-text="shop.second")
+      h5(v-if="shop.third" v-text="shop.third")
       p(v-if="shop.total" v-text="shop.total")
 
       b-button.d-inline-flex.pt-2.pr-3.pl-2.pb-2(v-if="shop.total" variant="primary" @click="startParsing(shop.name)")
@@ -28,8 +28,6 @@
 </template>
 
 <script>
-import axios from 'axios'
-
 export default {
   name: 'DashboardPage',
   data: () => ({
@@ -55,29 +53,34 @@ export default {
       this.data = [
         {
           name: 'brandshop',
-          start: 'Начало сбора в 1:25:03',
-          links: 'Ссылки на товары собраны в 1:25:18 за 15 сек.',
-          products: 'Информация по товарам собрана в 1:28:42 за 3 мин. 34 сек.',
+          first: 'Начало сбора в 1:25:03',
+          second: 'Ссылки на товары собраны в 1:25:18 за 15 сек.',
+          third: 'Информация по товарам собрана в 1:28:42 за 3 мин. 34 сек.',
           total: '3054 прод. было собрано за 5 мин. 32 сек.'
         },
         {
           name: 'stockmann',
-          start: 'Начало сбора в 1:25:03'
-        },
-        {
-          name: 'lgcity',
-          start: 'Начало сбора в 1:25:03'
+          first: 'Начало сбора в 1:25:03'
         }
       ]
     },
     async getProxies () {
-      // const { data } = await axios.get('/proxy')
-      this.proxies = [ '234.234.24.23', '2342.23.21.1' ]
+      try {
+        const { data } = await this.$axios.get('/proxy')
+        this.proxies = data
+        this.$bvToast.toast('Прокси получены', { autoHideDelay: 5000, variant: 'success', noCloseButton: true })
+      } catch (e) {
+        this.$bvToast.toast(e, { autoHideDelay: 5000, variant: 'danger', noCloseButton: true })
+      }
     },
-    save () {
-      this.proxies = this.proxiesReq
-      // await axios.post('/proxy', this.proxiesReq)
-      console.log(this.proxiesReq)
+    async save () {
+      try {
+        await this.$axios.put('/proxy', this.proxiesReq)
+        this.$bvToast.toast('Прокси сохранены', { autoHideDelay: 5000, variant: 'success', noCloseButton: true })
+        this.proxies = this.proxiesReq
+      } catch (e) {
+        this.$bvToast.toast(e, { autoHideDelay: 5000, variant: 'danger', noCloseButton: true })
+      }
     }
   },
   async created () {
