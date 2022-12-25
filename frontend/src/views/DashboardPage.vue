@@ -1,31 +1,54 @@
 <template lang="pug">
   div
-    b-icon.logout(icon="power" aria-hidden="true" font-scale="3rem" @click="logout")
-    b-icon.start(icon="play-fill" aria-hidden="true" font-scale="4rem" @click="start(null)")
+    b-icon#logout(icon="power" aria-hidden="true" font-scale="3rem" @click="logout")
+    b-tooltip(target="logout" triggers="hover") logout
+
+    b-icon#start(icon="play-fill" aria-hidden="true" font-scale="4rem" @click="startParsing(null)")
+    b-tooltip(target="start" triggers="hover") start parsing
+
+    b-icon#proxy(icon="list" aria-hidden="true" font-scale="4rem" v-b-modal.modal-proxy)
+    b-tooltip(target="proxy" triggers="hover") change proxy, активны до 29-ого
+
     b-jumbotron.parser-card(v-for="shop in data" :key="shop.name" :header="shop.name.charAt(0).toUpperCase() + shop.name.slice(1)")
       h3(v-if="shop.start" v-text="shop.start")
       h4(v-if="shop.links" v-text="shop.links")
       h5(v-if="shop.products" v-text="shop.products")
       p(v-if="shop.total" v-text="shop.total")
 
-      b-button.d-inline-flex.pt-2.pr-3.pl-2.pb-2(v-if="shop.total" variant="primary" @click="start(shop.name)")
+      b-button.d-inline-flex.pt-2.pr-3.pl-2.pb-2(v-if="shop.total" variant="primary" @click="startParsing(shop.name)")
         b-icon(icon="arrow-clockwise" animation="spin" font-scale="1")
         .ml-2 Перезапуск
+
+    b-modal#modal-proxy(scrollable ok-only title="Текущие прокси" ok-title="Сохранить" @ok="save")
+      div.cp(v-if="!isEditProxies")
+        p.m-0(v-for="proxy in proxies" :key="proxy" @click="isEditProxies = true") {{ proxy }}
+
+      textarea.textarea(v-if="isEditProxies" v-model="proxiesTextarea")
 
 </template>
 
 <script>
+import axios from 'axios'
+
 export default {
   name: 'DashboardPage',
   data: () => ({
-    data: null
+    data: null,
+    proxies: null,
+    proxiesTextarea: null,
+    isEditProxies: false
   }),
+  computed: {
+    proxiesReq () {
+      return this.proxiesTextarea.split('\n').filter(proxy => !!proxy)
+    }
+  },
   methods: {
     logout () {
       window.localStorage.setItem('accessToken', null)
       this.$router.push('/login')
     },
-    async start (shop) {
+    async startParsing (shop) {
       if (shop) console.log(shop)
     },
     async parsingProductsStoresData () {
@@ -46,7 +69,20 @@ export default {
           start: 'Начало сбора в 1:25:03'
         }
       ]
+    },
+    async getProxies () {
+      // const { data } = await axios.get('/proxy')
+      this.proxies = [ '234.234.24.23', '2342.23.21.1' ]
+    },
+    save () {
+      this.proxies = this.proxiesReq
+      // await axios.post('/proxy', this.proxiesReq)
+      console.log(this.proxiesReq)
     }
+  },
+  async created () {
+    await this.getProxies()
+    this.proxiesTextarea = this.proxies.reduce((acc, proxy) => acc += proxy + '\n', '')
   },
   async mounted () {
     await this.parsingProductsStoresData()
@@ -61,17 +97,30 @@ export default {
   padding: 2rem !important
   border-radius: 18px
 
-.logout,
-.start
+#logout,
+#start,
+#proxy
   position: absolute
   cursor: pointer
 
-.logout
+#logout
   top: 15px
   right: 15px
 
-.start
-  top: 10px
+#start
+  top: 7px
   right: 50px
+
+#proxy
+  top: 7px
+  right: 100px
+  outline: none
+
+.textarea
+  width: 100%
+  min-height: 1000px
+
+.cp
+  cursor: pointer
 
 </style>
