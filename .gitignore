@@ -1,2 +1,3 @@
 /parsing/**/*.env
 /parsing/**/node_modules
+/parsing/**/chrome
