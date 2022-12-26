@@ -225,7 +225,7 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
 
 // Главная функция программы (на экспорт)
 
-async function praseBrandshop() {
+async function parseBrandshop() {
     try {
         await client.connect();
         const start = Date.now();
@@ -301,4 +301,4 @@ async function praseBrandshop() {
     }
 };
 
-export default praseBrandshop;
+export default parseBrandshop;

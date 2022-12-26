@@ -1,5 +1,5 @@
-import praseBrandshop from "./index.js";
+import parseBrandshop from "./index.js";
 
 (async () => {
-    await praseBrandshop();
+    await parseBrandshop();
 })();
