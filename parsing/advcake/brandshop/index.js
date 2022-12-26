@@ -4,7 +4,7 @@ import { JSDOM } from "jsdom";
 import { MongoClient } from "mongodb";
 import * as dotenv from "dotenv";
 import fs from "fs";
-import { Worker } from "worker_threads";
+// import { Worker } from "worker_threads";
 
 
 // import puppeteer from "puppeteer-extra";
@@ -40,43 +40,39 @@ function cutSpaces(str) {
 }
 
 async function fetchPageDDoS (resourse, proxyAgent, proxy, selector) {
-    return new Promise(async (resolve) => {
-        console.log("call");
-        try {
-            let fetchedPage = await fetch(resourse, { agent: proxyAgent })
-            .then(res => res.text());
-            if ((new JSDOM(fetchedPage)).window.document.querySelector(selector)) {
-                console.log("Все окей");
-                resolve(fetchedPage);
-            } else {
-                console.log("Puppeteer пошел крутиться");
-                
-                
-                while (true) {
-                    if (puppeteerCounter < 4) {
-                        puppeteerCounter += 1;
-                        const worker = new Worker( './worker.js', { workerData: { resourse, proxy, selector } });
-                         
-                        const result = await new Promise((res) => {
-                            worker.on('message', async (msg) => {
-                                puppeteerCounter --;
-                                res(msg);
-                            });
-                            worker.on('exit', (e) => console.log(e));
-                        });
-                        console.log(puppeteerCounter);
-                        resolve(result);
-                        break; 
-                    } 
-                    await new Promise(res => setTimeout(res, 3000));  
-                }
-            }
-        } catch (err) {
-            console.log("Ошибка fetchPageDDoS");
-            console.error(err);
-            resolve(undefined);
+    try {
+        let fetchedPage = await fetch(resourse, { agent: proxyAgent })
+        .then(res => res.text());
+        if ((new JSDOM(fetchedPage)).window.document.querySelector(selector)) {
+            return fetchedPage;
+        } else {
+            console.log("Скрипт забанен на 3 минуты защитой от DDoS. Ждем...");
+            await new Promise(resolve => setTimeout(resolve, 3 * 60 * 1e3));
+            return fetchPageDDoS(resourse, proxyAgent, proxy, selector);
+            
+            // console.log("Puppeteer запущен");
+            // while (true) {
+            //     if (puppeteerCounter < 4) {
+            //         puppeteerCounter += 1;
+            //         const worker = new Worker( './worker.js', { workerData: { resourse, proxy, selector } });
+                        
+            //         const result = await new Promise((res) => {
+            //             worker.on('message', async (msg) => {
+            //                 puppeteerCounter --;
+            //                 res(msg);
+            //             });
+            //         });
+            //         resolve(result);
+            //         break; 
+            //     } 
+            //     await new Promise(res => setTimeout(res, 3000));  
+            // }
         }
-    });
+    } catch (err) {
+        console.log("Ошибка fetchPageDDoS");
+        console.error(err);
+        return undefined;
+    }
 }
 
 // Функция обработки одной страницы магазина (основной функционал здесь)
@@ -86,7 +82,6 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
         let counter = 0;
         const productsLinksArray = [...page.window.document.querySelectorAll(".product-card__link")]
         .map(e => e.href);
-        console.log(productsLinksArray);
         for (let link of productsLinksArray) {
             try {
                 const productPage = new JSDOM(
@@ -97,8 +92,6 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                     color: e.querySelector(".product-colors__tooltip").textContent, 
                     href: "https://brandshop.ru" + (e.querySelector(".product-colors__item-link").href || link)
                 }));
-                console.log("https://brandshop.ru" + link);
-                console.log(colorsArray);
                 // Выполняется для всех цветов данного товара
                 for (let colorInfo of colorsArray) {
                     try {
@@ -114,7 +107,7 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                         )?.data?.url;
                         const product = {
                             age: "Взрослый",
-                            color: colorInfo.color.toLowerCase(),
+                            color: colorInfo.color.toLowerCase().replace(/ё/g, "е"),
                             delivery:  ["ru", "rb", "kz"],
                             deliveryPrice: 490,
                             description: false,
@@ -134,7 +127,7 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                         const descriptionList = [...productPage.window.document.querySelectorAll(".product-page__subheader")]
                         .map(e => cutSpaces(e.innerHTML));
                         const brand = productPage.window.document.querySelector(".product-page__header")?.textContent;
-                        product.brand = brand;
+                        product.brand = brand.toUpperCase();
                         product.name = descriptionList[2] + " " + brand;
 
 
@@ -152,14 +145,9 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                         let toolbarArray = [...productPage.window.document.querySelectorAll(".breadcrumbs__item")]
                         .map(e => cutSpaces(e.textContent));
                         product.category = (() => {
-                            if (!toolbarArray[2]) {
-                                console.log(productPage.window.document.querySelector("html").innerHTML);
-                                console.log("Undefined: " + product.link);
-                                return undefined;
-                            }
-                            if (toolbarArray[2].toLowerCase().includes("одежда")) return "Одежда";
-                            if (toolbarArray[2].toLowerCase().includes("обувь")) return "Обувь";
-                            if (toolbarArray[2].toLowerCase().includes("аксессуары")) return "Аксессуары";
+                            if (toolbarArray[2]?.toLowerCase().includes("одежда")) return "Одежда";
+                            if (toolbarArray[2]?.toLowerCase().includes("обувь")) return "Обувь";
+                            if (toolbarArray[2]?.toLowerCase().includes("аксессуары")) return "Аксессуары";
                             return undefined;
                         })();
                         product.subcategory = toolbarArray[3];
@@ -191,7 +179,6 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                         product.sizes = sizes;
 
 
-                        console.log(product);
                         
                         // Полный результат парсинга добавляется в БД
                         if (product.price) {
@@ -266,19 +253,16 @@ async function praseBrandshop() {
             let i = 1;
             while (true) {
                 try {
+                    let proxyAgent;
+                    let page;
+                    while (!page) {
+                        proxyAgent = new HttpsProxyAgent("http://" + proxies[proxyCounter % 50]);
+                        proxyCounter ++;
+                        page = await fetchPageDDoS(`https://brandshop.ru/sale/?mfp=17-pol%5B${gender}%5D&page=${i}`, proxyAgent, proxies[(proxyCounter - 1) % 50], ".header__menu");
+                    }
                     
-                    const proxyAgent = new HttpsProxyAgent("http://" + proxies[proxyCounter % 50]);
-                    proxyCounter ++;
-                    const page = new JSDOM(
-                        // await fetch(`https://brandshop.ru/sale/?mfp=17-pol%5B${gender}%5D&page=${i}`, { agent: proxyAgent })
-                        // .then(res => res.text())
-                        await fetchPageDDoS(`https://brandshop.ru/sale/?mfp=17-pol%5B${gender}%5D&page=${i}`, proxyAgent, proxies[(proxyCounter - 1) % 50], ".header__menu")
-                    );
-                    // break;
-                    // console.log(page.window.document.querySelector("html").innerHTML);
-                    if (page.window.document.querySelector(".product-card__link")) {
-                        // console.log("http://" + proxies[(proxyCounter - 1) % 50]);
-                        result.push(fetchShopPage(proxyAgent, proxies[(proxyCounter - 1) % 50],  gender, page));
+                    if ((new JSDOM(page)).window.document.querySelector(".product-card__link")) {
+                        result.push(fetchShopPage(proxyAgent, proxies[(proxyCounter - 1) % 50],  gender, (new JSDOM(page))));
                     } else {
                         break;
                     }
