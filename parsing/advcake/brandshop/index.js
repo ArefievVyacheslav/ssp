@@ -16,6 +16,8 @@ dotenv.config();
 
 let puppeteerCounter = 0;
 
+const proxies = fs.readFileSync(process.env.PROXY_PATH, { encoding: "utf8" }).split("\r\n");
+
 const host = `${process.env.DB_HOST}:${process.env.DB_PORT}`;
 
 // Присоединение к MongoDB
@@ -77,16 +79,22 @@ async function fetchPageDDoS (resourse, proxyAgent, proxy, selector) {
 
 // Функция обработки одной страницы магазина (основной функционал здесь)
 
-async function fetchShopPage(proxyAgent, proxy, gender, page) {
+async function fetchShopPage(proxyNumber, gender, page) {
     try {
+        let currentNumber = proxyNumber;
+        let proxyAgent = new HttpsProxyAgent("http://" + proxies[currentNumber % 50]);
         let counter = 0;
         const productsLinksArray = [...page.window.document.querySelectorAll(".product-card__link")]
         .map(e => e.href);
         for (let link of productsLinksArray) {
             try {
-                const productPage = new JSDOM(
-                    await fetchPageDDoS("https://brandshop.ru" + link, proxyAgent, proxy, ".toolbar__product-page")
-                );
+                let fetchedData = await fetchPageDDoS("https://brandshop.ru" + link, proxyAgent, proxies[currentNumber % 50], ".toolbar__product-page");
+                while (!fetchedData) {
+                    currentNumber ++;
+                    proxyAgent = new HttpsProxyAgent("http://" + proxies[currentNumber % 50]);
+                    fetchedData = await fetchPageDDoS("https://brandshop.ru" + link, proxyAgent, proxies[currentNumber % 50], ".toolbar__product-page");
+                }
+                const productPage = new JSDOM(fetchedData);
                 const colorsArray = [...productPage.window.document.querySelectorAll(".product-colors__item")]
                 .map(e => ({ 
                     color: e.querySelector(".product-colors__tooltip").textContent, 
@@ -96,9 +104,14 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                 for (let colorInfo of colorsArray) {
                     try {
                         // Загрузка страницы
-                        const productPage = new JSDOM(
-                            await fetchPageDDoS(colorInfo.href, proxyAgent, proxy, ".toolbar__product-page")
-                        );
+                        
+                        let fetchedData = await fetchPageDDoS(colorInfo.href, proxyAgent, proxies[currentNumber % 50], ".toolbar__product-page");
+                        while (!fetchedData) {
+                            currentNumber ++;
+                            proxyAgent = new HttpsProxyAgent("http://" + proxies[currentNumber % 50]);
+                            fetchedData = await fetchPageDDoS(colorInfo.href, proxyAgent, proxies[currentNumber % 50], ".toolbar__product-page");
+                        }
+                        const productPage = new JSDOM(fetchedData);
 
                         // Получается ссылка на товар
                         const dataLink = (
@@ -127,7 +140,7 @@ async function fetchShopPage(proxyAgent, proxy, gender, page) {
                         const descriptionList = [...productPage.window.document.querySelectorAll(".product-page__subheader")]
                         .map(e => cutSpaces(e.innerHTML));
                         const brand = productPage.window.document.querySelector(".product-page__header")?.textContent;
-                        product.brand = brand.toUpperCase();
+                        product.brand = brand?.toUpperCase();
                         product.name = descriptionList[2] + " " + brand;
 
 
@@ -245,8 +258,6 @@ async function parseBrandshop() {
         collection = db.collection("processing");
         await collection.deleteMany({});
 
-
-        const proxies = fs.readFileSync(process.env.PROXY_PATH, { encoding: "utf8" }).split("\r\n");
         let proxyCounter = 0;
         const generatePromises = async (gender) => {
             const result = [];
@@ -262,7 +273,7 @@ async function parseBrandshop() {
                     }
                     
                     if ((new JSDOM(page)).window.document.querySelector(".product-card__link")) {
-                        result.push(fetchShopPage(proxyAgent, proxies[(proxyCounter - 1) % 50],  gender, (new JSDOM(page))));
+                        result.push(fetchShopPage(proxyCounter - 1,  gender, (new JSDOM(page))));
                     } else {
                         break;
                     }
